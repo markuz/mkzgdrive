@@ -157,9 +157,9 @@ def get_item(name,parent):
     then None is returned
     """
     for i in files:
-        if i["title"] != name:
+        if i.get("title","") != name:
             continue
-        for par in i["parents"]:
+        for par in i.get("parents",tuple()):
             if par["id"] == parent:
                 return i
 
