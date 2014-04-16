@@ -28,6 +28,7 @@
 import os
 import sys
 import httplib2
+import httplib
 import mimetypes
 import ConfigParser
 
@@ -147,7 +148,7 @@ def get_files_in_directory(service, parent_id, path):
             if not page_token:
                 print 
                 return
-        except errors.HttpError, error:
+        except (errors.HttpError,httplib.BadStatusLine), error:
             print 'An error occurred: %s' % error
             return
 
