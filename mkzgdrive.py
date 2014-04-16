@@ -196,7 +196,7 @@ def insert_file(service, path, title="", description="", parent_id="None"):
     for i in range(1,4):
         try:
             file = service.files().insert(**service_args).execute()
-        except errors.HttpError, error:
+        except (errors.HttpError, httplib.BadStatusLine),  error:
             print "Error ocurred when uplading a file: %r"%error
             print "Retry number %d"%i
         else:
