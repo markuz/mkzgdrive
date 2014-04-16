@@ -2,7 +2,7 @@
 # -*- encoding: utf-8 -*-
 # -*- coding: utf-8 -*-
 #
-# This file is part of my scripts project
+# This file is part of mkzgdrive project
 #
 # Copyright (c) 2011 Marco Antonio Islas Cruz
 #
