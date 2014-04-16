@@ -249,22 +249,12 @@ def iterate_folder(service, id=None, fpath = None):
     #Check if the file is newer in gdrive or
     # if it si newer here.
 
-# Path to the file to upload
-FILENAME = 'document.txt'
-
-
 # Create an httplib2.Http object and authorize it with our credentials
 http = httplib2.Http()
 http = credentials.authorize(http)
 
 drive_service = build('drive', 'v2', http=http)
 
-#pprint.pprint(retrieve_all_files(drive_service))
-#retrieve_all_files(drive_service)
-#pprint.pprint(directories.keys())
 
-
-iterate_folder(drive_service, id=None)
-
-#pprint.pprint(retrieve_all_parents(drive_service))
-sys.exit()
+if __name__ == '__main__':
+    iterate_folder(drive_service, id=None)
