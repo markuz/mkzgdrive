@@ -117,7 +117,7 @@ def authorize(storage):
 
 # Run through the OAuth flow and retrieve credentials
 try:
-    storage = Storage(os.path.join(os.environ["HOME"], "mkzgrdrive_credentials"))
+    storage = Storage(os.path.join(os.environ["HOME"], "mkzgdrive_credentials"))
 except:
     print "Cannot create credentials storage in '%s'"%os.path.join(os.environ["HOME"], "mkzgrdrive_credentials")
     sys.exit(-1)
