@@ -2,9 +2,9 @@
 # -*- encoding: utf-8 -*-
 # -*- coding: utf-8 -*-
 #
-# This file is part of my scripts project
+# This file is part of mkzgdrive project
 #
-# Copyright (c) 2011 Marco Antonio Islas Cruz
+# Copyright (c) 2014 Marco Antonio Islas Cruz
 #
 # This script is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA
 #
 # @author    Marco Antonio Islas Cruz <markuz@islascruz.org>
-# @copyright 2011 Marco Antonio Islas Cruz
+# @copyright 2014 Marco Antonio Islas Cruz
 # @license   http://www.gnu.org/licenses/gpl.txt
 
 
@@ -249,22 +249,12 @@ def iterate_folder(service, id=None, fpath = None):
     #Check if the file is newer in gdrive or
     # if it si newer here.
 
-# Path to the file to upload
-FILENAME = 'document.txt'
-
-
 # Create an httplib2.Http object and authorize it with our credentials
 http = httplib2.Http()
 http = credentials.authorize(http)
 
 drive_service = build('drive', 'v2', http=http)
 
-#pprint.pprint(retrieve_all_files(drive_service))
-#retrieve_all_files(drive_service)
-#pprint.pprint(directories.keys())
 
-
-iterate_folder(drive_service, id=None)
-
-#pprint.pprint(retrieve_all_parents(drive_service))
-sys.exit()
+if __name__ == '__main__':
+    iterate_folder(drive_service, id=None)
