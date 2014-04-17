@@ -157,6 +157,8 @@ def get_item(name,parent):
     then None is returned
     """
     for i in files:
+        if not i:
+            continue
         if i.get("title","") != name:
             continue
         for par in i.get("parents",tuple()):
@@ -240,7 +242,10 @@ def iterate_folder(service, id=None, fpath = None):
             gfile = insert_file(service, path = path, 
                     parent_id = id)
             print "Done: %r"%path
-            files.append(gfile)
+            if gfile:
+                files.append(gfile)
+            else:
+                print "Upload of '%s' was unsuccesfull"%path
             continue
         if os.path.isdir(path):
             # Get the id of this directory
