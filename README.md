@@ -22,3 +22,18 @@ You should end with three things:
 *   Client ID
 *   Client Secret
 *   Redirect URIs.
+
+The first time you run mkzgdrive the file  `~/mkzgdrive.conf` will be created, edit it and put the **Client Secret** there.
+
+##FILES
+
+* **$HOME/mkzgdrive.conf** Configuration file
+* **$HOME/mkzgdrive_credentials** Credentials storage file
+
+##Contributing
+
+If you find usefull this project and want to contribute you can do it in several ways:
+
+* Go to the [https://github.com/markuz/mkzgdrive/issues?state=open](issues) page and check what you can do.
+* Report issues in the [https://github.com/markuz/mkzgdrive/issues?state=open](issues) page
+* Spread the word.
