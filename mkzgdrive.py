@@ -86,7 +86,8 @@ parser.add_option('--concurrent-uploads',dest='queue_size',action='store',
         type=int, help="Number of concurrent uploads", default=1)
 parser.add_option('--force-local-timestamp', dest="force_local_timestamp",
         action="store_true",
-        help=("If the ")
+        help=("If this is set then if the md5Checksum is the same the "
+            "modifiedDate will be updated to the one at the local filesystem"))
 options, args = parser.parse_args()
 
 MAXSIZE = options.max_file_size
