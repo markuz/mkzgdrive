@@ -30,6 +30,7 @@ import sys
 import time
 import signal
 import Queue
+import datetime
 import threading
 import httplib2
 import httplib
@@ -226,6 +227,22 @@ def insert_file(service, path, title="", description="", parent_id="None"):
             files.append(file)
             return file
 
+def update_file(service, item, path, new_revision=True):
+    """Uploads an updated version of the file.
+    """
+    file_id = item["id"]
+    # File's new content.
+    media_body = MediaFileUpload(
+            path, mimetype=item["mimeType"], resumable=True)
+
+    # Send the request to the API.
+    updated_file = service.files().update(
+        fileId=file_id,
+        body=item,
+        newRevision=new_revision,
+        media_body=media_body).execute()
+    return updated_file
+
 def worker():
     global queue
     while True and not STOP_THREAD:
@@ -288,6 +305,13 @@ def iterate_folder(service, id=None, fpath = None):
             thr.start()
             queue.put(args)
             # This item is not in Google Drive.
+        else:
+            if options.force_local_timestamp:
+                stat = os.stat(path)
+                updatetime = datetime.datetime.fromtimestamp(stat.st_mtime)
+                gitem["modifiedDate"] = updatetime
+                update_file(service, gitem, path, new_revision=False)
+
         if os.path.isdir(path):
             while True: #Wait until we have the gitem of the path.
                 gitem = get_item(dirfile, id)
