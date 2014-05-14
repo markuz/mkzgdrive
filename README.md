@@ -14,6 +14,11 @@ or
 
 <pre>pip install --upgrade google-api-python-client</pre>
 
+## Install python rfc3339 module
+
+Download the zip from https://github.com/tonyg/python-rfc3339 and install as usual 
+<pre>$ python setup.py install</pre>
+
 ## Setup Google Auth credentials.
 Please note that you need to get the CLIENT SECRET key, go to https://console.developers.google.com/ create a project, then go to **APIs &amp; Auth** &gt; **Credentials** and create a new client id.
 
@@ -37,3 +42,4 @@ If you find usefull this project and want to contribute you can do it in several
 * Go to the [https://github.com/markuz/mkzgdrive/issues?state=open](issues) page and check what you can do.
 * Report issues in the [https://github.com/markuz/mkzgdrive/issues?state=open](issues) page
 * Spread the word.
+
