@@ -27,6 +27,10 @@
 
 import os
 import sys
+import time
+import signal
+import Queue
+import threading
 import httplib2
 import httplib
 import mimetypes
@@ -78,6 +82,11 @@ parser.add_option('--max-file-size',dest='max_file_size',action='store',
         default="10GB")
 parser.add_option('--skip-hidden-files',dest='skip_hidden_files',action='store_true', 
         help="Ignore UNIX hidden files (those that starts with dot)")
+parser.add_option('--concurrent-uploads',dest='queue_size',action='store', 
+        type=int, help="Number of concurrent uploads", default=1)
+parser.add_option('--force-local-timestamp', dest="force_local_timestamp",
+        action="store_true",
+        help=("If the ")
 options, args = parser.parse_args()
 
 MAXSIZE = options.max_file_size
@@ -95,6 +104,8 @@ if MAXSIZE:
         print "Wrong value for --max-file-size"
         sys.exit()
 
+queue = Queue.Queue(maxsize = options.queue_size)
+STOP_THREAD = False
 
 # Copy your credentials from the console
 CLIENT_ID = conf.get("gdrive","client_id")
@@ -105,6 +116,11 @@ OAUTH_SCOPE = conf.get("gdrive","oauth_scope")
 
 # Redirect URI for installed apps
 REDIRECT_URI = conf.get("gdrive","redirect_uri")
+
+def signal_handler(signum, frame):
+    print "Exit"
+    global STOP_THREAD 
+    STOP_THREAD = True
 
 def authorize(storage):
     flow = OAuth2WebServerFlow(CLIENT_ID, CLIENT_SECRET, OAUTH_SCOPE, REDIRECT_URI)
@@ -134,7 +150,7 @@ directories = {}
 def get_files_in_directory(service, parent_id, path):
     global files
     page_token = None
-    while True:
+    while True and not STOP_THREAD:
         try:
             param = {}
             if page_token:
@@ -142,7 +158,10 @@ def get_files_in_directory(service, parent_id, path):
             param["q"] = "'%s' in parents and trashed != true"%parent_id
             sys.stdout.write("Getting files for directory '%s'=> '%s' [%d]\r"%(parent_id, path, len(files)))
             sys.stdout.flush()
-            result = service.files().list(**param).execute()
+            try:
+                result = service.files().list(**param).execute()
+            except:
+                return
             files.extend(result['items'])
             page_token = result.get('nextPageToken')
             if not page_token:
@@ -176,6 +195,7 @@ def insert_file(service, path, title="", description="", parent_id="None"):
     parent_id         : The parent id of the file.
     """
     global files
+    global queue
     isdir = os.path.isdir(path)
     if isdir:
         mimetype = "application/vnd.google-apps.folder"
@@ -201,10 +221,28 @@ def insert_file(service, path, title="", description="", parent_id="None"):
         except (errors.HttpError, httplib.BadStatusLine),  error:
             print "Error ocurred when uplading a file: %r"%error
             print "Retry number %d"%i
-        else:
+        if file:
             files.append(file)
             return file
 
+def worker():
+    global queue
+    while True and not STOP_THREAD:
+        try:
+            service, path, id = queue.get()
+            if STOP_THREAD:
+                sys.exit()
+                break
+            # Create an httplib2.Http object and authorize it with our credentials
+            http = httplib2.Http()
+            http = credentials.authorize(http)
+            drive_service = build('drive', 'v2', http=http)
+            print "uploading %r"%path
+            insert_file(drive_service, path = path, parent_id = id)
+            print "Done: %r"%path
+            queue.task_done()
+        except (KeyboardInterrupt, SystemExit):
+            sys.exit()
 
 def iterate_folder(service, id=None, fpath = None):
     """Iterate a folder and check which files/folders are missing.
@@ -212,7 +250,10 @@ def iterate_folder(service, id=None, fpath = None):
     For the local files it checks the modification time and 
     update (local or remote) apropriatedly.
     """
+    if STOP_THREAD:
+        sys.exit()
     global files
+    global queue
     fpath = fpath or os.getcwd()
     if not id: #we are dealing with the root directory.
         try:
@@ -225,29 +266,33 @@ def iterate_folder(service, id=None, fpath = None):
     get_files_in_directory(service, id, fpath)
     for dirfile in dirs_and_files:
         path = os.path.join(fpath, dirfile)
+        if os.path.split(path)[-1].startswith(".") and \
+                    options.skip_hidden_files:
+            print "Ignoring %s because it starts with dot"%path
+            continue
         gitem = get_item(dirfile, id)
         if not gitem:
-            if os.path.split(path)[-1].startswith(".") and \
-                    options.skip_hidden_files:
-                print "Ignoring %s because it starts with dot"%path
-                continue
+            if STOP_THREAD:
+                sys.exit()
+            while queue.full():
+                time.sleep(0.2)
             if os.path.isfile(path):
                 stat = os.stat(path)
                 if stat.st_size > MAXSIZE:
                     print "Ignoring %s because is bigger than %d bytes"%(
                             path, MAXSIZE)
                     continue
+            args = (service, path, id)
+            thr = threading.Thread(target = worker)
+            thr.start()
+            queue.put(args)
             # This item is not in Google Drive.
-            print "uploading %r"%path
-            gfile = insert_file(service, path = path, 
-                    parent_id = id)
-            print "Done: %r"%path
-            if gfile:
-                files.append(gfile)
-            else:
-                print "Upload of '%s' was unsuccesfull"%path
-            continue
         if os.path.isdir(path):
+            while True: #Wait until we have the gitem of the path.
+                gitem = get_item(dirfile, id)
+                if gitem:
+                    break
+                time.sleep(0.1)
             # Get the id of this directory
             iterate_folder(service, gitem["id"], path)
             continue
@@ -257,9 +302,12 @@ def iterate_folder(service, id=None, fpath = None):
 # Create an httplib2.Http object and authorize it with our credentials
 http = httplib2.Http()
 http = credentials.authorize(http)
-
 drive_service = build('drive', 'v2', http=http)
 
 
 if __name__ == '__main__':
-    iterate_folder(drive_service, id=None)
+    try:
+        iterate_folder(drive_service, id=None)
+    except:
+        STOP_THREAD = True
+        
