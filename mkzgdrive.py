@@ -30,12 +30,16 @@ import sys
 import time
 import signal
 import Queue
+import feed
 import datetime
 import threading
 import httplib2
 import httplib
 import mimetypes
 import ConfigParser
+
+from feed.date.rfc3339 import timestamp_from_tf, tf_from_timestamp
+import rfc3339
 
 from apiclient import errors
 from optparse import OptionParser
@@ -45,6 +49,8 @@ from apiclient.http import MediaFileUpload
 from oauth2client.client import OAuth2WebServerFlow
 
 mimetypes.init()
+
+feed.date.rfc3339.set_default_time_offset("Z")
 
 conf = ConfigParser.ConfigParser()
 def load_defaults():
@@ -162,7 +168,9 @@ def get_files_in_directory(service, parent_id, path):
             sys.stdout.flush()
             try:
                 result = service.files().list(**param).execute()
-            except:
+            except Exception, e:
+                sys.stderr.write("Error getting files for directory %s: %r\r"%(path, e))
+                sys.stderr.flush()
                 return
             files.extend(result['items'])
             page_token = result.get('nextPageToken')
@@ -209,9 +217,12 @@ def insert_file(service, path, title="", description="", parent_id="None"):
             mimetype = "/".join(mimetype)
     title = title or os.path.split(path)[-1]
     description = description or title
+    stat = os.stat(path)
+    created_date = datetime.datetime.utcfromtimestamp(stat.st_ctime).isoformat()
     if not isdir:
         media_body = MediaFileUpload(path, mimetype=mimetype, resumable = True)
-    body = {'title': title,'description': description,'mimeType': mimetype}
+    body = {'title': title,'description': description,'mimeType': mimetype,
+            'createdDate':created_date}
     if parent_id:
         body['parents'] = [{'id': parent_id}]
     service_args = {'body': body}
@@ -236,11 +247,16 @@ def update_file(service, item, path, new_revision=True):
             path, mimetype=item["mimeType"], resumable=True)
 
     # Send the request to the API.
-    updated_file = service.files().update(
+    try:
+        updated_file = service.files().update(
         fileId=file_id,
         body=item,
         newRevision=new_revision,
         media_body=media_body).execute()
+    except Exception, e:
+        sys.stderr.write("Error: %r\n"%e)
+        sys.stderr.flush()
+        return
     return updated_file
 
 def worker():
@@ -259,8 +275,13 @@ def worker():
             insert_file(drive_service, path = path, parent_id = id)
             print "Done: %r"%path
             queue.task_done()
-        except (KeyboardInterrupt, SystemExit):
+        except (KeyboardInterrupt, SystemExit), e:
+            sys.stderr.write("Error: %r\n"%e)
+            sys.stderr.flush()
             sys.exit()
+        except Exception, e:
+            sys.stderr.write("Error: %r\n"%e)
+            sys.stderr.flush()
 
 def iterate_folder(service, id=None, fpath = None):
     """Iterate a folder and check which files/folders are missing.
@@ -307,10 +328,21 @@ def iterate_folder(service, id=None, fpath = None):
             # This item is not in Google Drive.
         else:
             if options.force_local_timestamp:
+                print "Checking timestamp for %s"%path
                 stat = os.stat(path)
-                updatetime = datetime.datetime.fromtimestamp(stat.st_mtime)
-                gitem["modifiedDate"] = updatetime
-                update_file(service, gitem, path, new_revision=False)
+                updatetime = stat.st_mtime
+                itemtime = tf_from_timestamp(gitem["modifiedDate"])
+                if itemtime == updatetime:
+                    continue
+                import pdb
+                pdb.set_trace()
+                dat = datetime.datetime.utcfromtimestamp(updatetime) + datetime.timedelta(microseconds=1)
+                updatetime = stat.st_mtime + datetime.timedelta(days=0).total_seconds()
+                gitem["modifiedDate"] = rfc3339.datetimetostr(dat)
+                result = update_file(service, gitem, path, new_revision=False)
+                if result:
+                    gitem = result
+
 
         if os.path.isdir(path):
             while True: #Wait until we have the gitem of the path.
