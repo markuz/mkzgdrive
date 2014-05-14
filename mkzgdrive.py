@@ -30,7 +30,6 @@ import sys
 import time
 import signal
 import Queue
-import feed
 import datetime
 import threading
 import httplib2
@@ -38,7 +37,6 @@ import httplib
 import mimetypes
 import ConfigParser
 
-from feed.date.rfc3339 import timestamp_from_tf, tf_from_timestamp
 import rfc3339
 
 from apiclient import errors
@@ -50,7 +48,6 @@ from oauth2client.client import OAuth2WebServerFlow
 
 mimetypes.init()
 
-feed.date.rfc3339.set_default_time_offset("Z")
 
 conf = ConfigParser.ConfigParser()
 def load_defaults():
